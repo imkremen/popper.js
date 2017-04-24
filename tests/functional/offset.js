@@ -20,7 +20,7 @@ describe('[offset]', () => {
           offset: offset,
         },
       },
-      onCreate: (data) => {
+      onCreate: data => {
         const refLeft = reference.getBoundingClientRect().left;
         const refWidth = reference.offsetWidth;
         const popperLeft = popper.getBoundingClientRect().left;
@@ -50,7 +50,7 @@ describe('[offset]', () => {
           offset: offset,
         },
       },
-      onCreate: (data) => {
+      onCreate: data => {
         const refLeft = reference.getBoundingClientRect().left;
         const refBottom = reference.getBoundingClientRect().bottom;
         const refWidth = reference.offsetWidth;
@@ -84,7 +84,7 @@ describe('[offset]', () => {
           offset: offset,
         },
       },
-      onCreate: (data) => {
+      onCreate: data => {
         const refLeft = reference.getBoundingClientRect().left;
         const refWidth = reference.offsetWidth;
         const popperLeft = popper.getBoundingClientRect().left;
@@ -113,7 +113,7 @@ describe('[offset]', () => {
           offset: offset,
         },
       },
-      onCreate: (data) => {
+      onCreate: data => {
         const refLeft = reference.getBoundingClientRect().left;
         const refWidth = reference.offsetWidth;
         const popperLeft = popper.getBoundingClientRect().left;
@@ -143,7 +143,7 @@ describe('[offset]', () => {
           offset: offset,
         },
       },
-      onCreate: (data) => {
+      onCreate: data => {
         const refLeft = reference.getBoundingClientRect().left;
         const refBottom = reference.getBoundingClientRect().bottom;
         const refWidth = reference.offsetWidth;
@@ -179,7 +179,7 @@ describe('[offset]', () => {
         },
         flip: { enabled: false },
       },
-      onCreate: (data) => {
+      onCreate: data => {
         const refLeft = reference.getBoundingClientRect().left;
         const refBottom = reference.getBoundingClientRect().bottom;
         const refWidth = reference.offsetWidth;
@@ -192,6 +192,79 @@ describe('[offset]', () => {
 
         expect(popperLeft).toBeApprox(expectedPopperLeft);
         expect(popperTop - arrowHeight).toBeApprox(refBottom - refHeight / 4);
+        data.instance.destroy();
+        done();
+      },
+    });
+  });
+
+  it('creates a popper with math operation as offset value', done => {
+    const reference = appendNewRef(1);
+    reference.style.marginLeft = '100px';
+    reference.style.marginTop = '100px';
+    const popper = appendNewPopper(2);
+
+    const offset = '5 - 25%';
+    const arrowHeight = 5;
+
+    new Popper(reference, popper, {
+      placement: 'bottom',
+      modifiers: {
+        offset: {
+          offset: offset,
+        },
+        flip: { enabled: false },
+      },
+      onCreate: data => {
+        const refLeft = reference.getBoundingClientRect().left;
+        const refBottom = reference.getBoundingClientRect().bottom;
+        const refWidth = reference.offsetWidth;
+        const popperLeft = popper.getBoundingClientRect().left;
+        const popperTop = popper.getBoundingClientRect().top;
+        const popperWidth = popper.offsetWidth;
+        const expectedPopperLeft =
+          refLeft + refWidth / 2 - popperWidth / 2 - refWidth / 4 + 5;
+
+        expect(popperLeft).toBeApprox(expectedPopperLeft);
+        expect(popperTop - arrowHeight).toBeApprox(refBottom);
+        data.instance.destroy();
+        done();
+      },
+    });
+  });
+
+  it('creates a popper with a couple of math operations as offset values', done => {
+    const reference = appendNewRef(1);
+    reference.style.marginLeft = '100px';
+    reference.style.marginTop = '100px';
+    const popper = appendNewPopper(2);
+
+    const offset = '5 - 25% 10px + 25%';
+    const arrowHeight = 5;
+
+    new Popper(reference, popper, {
+      placement: 'bottom',
+      modifiers: {
+        offset: {
+          offset: offset,
+        },
+        flip: { enabled: false },
+      },
+      onCreate: data => {
+        const refLeft = reference.getBoundingClientRect().left;
+        const refHeight = reference.getBoundingClientRect().height;
+        const refBottom = reference.getBoundingClientRect().bottom;
+        const refWidth = reference.offsetWidth;
+        const popperLeft = popper.getBoundingClientRect().left;
+        const popperTop = popper.getBoundingClientRect().top;
+        const popperWidth = popper.offsetWidth;
+        const expectedPopperLeft =
+          refLeft + refWidth / 2 - popperWidth / 2 - refWidth / 4 + 5;
+
+        expect(popperLeft).toBeApprox(expectedPopperLeft);
+        expect(popperTop - arrowHeight).toBeApprox(
+          refBottom + refHeight / 4 + 10
+        );
         data.instance.destroy();
         done();
       },

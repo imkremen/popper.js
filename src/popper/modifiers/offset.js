@@ -1,5 +1,53 @@
 import isNumeric from '../utils/isNumeric';
 import getClientRect from '../utils/getClientRect';
+import find from '../utils/find';
+
+function toValue(str, measurement, data) {
+  // separate value from unit
+  const split = str.match(/(\-?\d*\.?\d*)(.*)/);
+  const value = +split[1];
+  const unit = split[2];
+
+  // If it's not a number it's an operator, I guess
+  if (!value) {
+    return str;
+  }
+
+  if (unit.indexOf('%') === 0) {
+    let element;
+    switch (unit) {
+      case '%p':
+        element = data.offsets.popper;
+        break;
+      case '%':
+      case '%r':
+      default:
+        element = data.offsets.reference;
+    }
+
+    const rect = getClientRect(element);
+    return rect[measurement] / 100 * value;
+  } else if (unit === 'vh' || unit === 'vw') {
+    // if is a vh or vw, we calculate the size based on the viewport
+    let size;
+    if (unit === 'vh') {
+      size = Math.max(
+        document.documentElement.clientHeight,
+        window.innerHeight || 0
+      );
+    } else {
+      size = Math.max(
+        document.documentElement.clientWidth,
+        window.innerWidth || 0
+      );
+    }
+    return size / 100 * value;
+  } else {
+    // if is an explicit pixel unit, we get rid of the unit and keep the value
+    // if is an implicit unit, it's px, and we return just the value
+    return value;
+  }
+}
 
 /**
  * @function
@@ -11,92 +59,72 @@ import getClientRect from '../utils/getClientRect';
  * @returns {Object} The data object, properly modified
  */
 export default function offset(data, options) {
-  const placement = data.placement;
+  const basePlacement = data.placement.split('-')[0];
   const popper = data.offsets.popper;
 
-  let offsets;
+  const offsets = [0, 0];
   if (isNumeric(options.offset)) {
-    offsets = [options.offset, 0];
+    offsets[0] = options.offset;
   } else {
-    // split the offset in case we are providing a pair of offsets separated
-    // by a blank space
-    offsets = options.offset.split(' ');
+    let measurement;
+    // Use height if placement is left or right and index is 0 otherwise use width
+    // in this way the first offset will use an axis and the second one
+    // will use the other one
+    const useHeight = ['right', 'left'].indexOf(basePlacement) !== -1;
 
-    // itherate through each offset to compute them in case they are percentages
-    offsets = offsets.map((offset, index) => {
-      // separate value from unit
-      const split = offset.match(/(\-?\d*\.?\d*)(.*)/);
-      const value = +split[1];
-      const unit = split[2];
+    // Split the offset string to obtain a list of values and operands
+    // The regex addresses values with the plus or minus sign in front (+10, -20, etc)
+    const fragments = options.offset
+      .split(/(\+|\-)(?!\d)/)
+      .map(frag => frag.trim());
 
-      // use height if placement is left or right and index is 0 otherwise use width
-      // in this way the first offset will use an axis and the second one
-      // will use the other one
-      let useHeight =
-        placement.indexOf('right') !== -1 || placement.indexOf('left') !== -1;
+    // Detect if the offset string contains a pair of values or a single one
+    const divider = fragments.indexOf(
+      find(fragments, frag => frag.indexOf(' ') !== -1)
+    );
 
-      if (index === 1) {
-        useHeight = !useHeight;
-      }
+    // If divider is found, we divide the list of values and operands to divide
+    // them by ofset X and Y.
+    let ops = divider !== -1
+      ? [
+        fragments
+            .slice(0, divider)
+            .concat(fragments[divider].split(/\s+/)[0]),
+        [fragments[divider].split(/\s+/)[1]].concat(
+            fragments.slice(divider + 1)
+          ),
+      ]
+      : [fragments];
 
-      const measurement = useHeight ? 'height' : 'width';
+    // Convert the values with units to absolute pixels to allow our computations
+    ops = ops.map((op, index) => {
+      // Most of the units rely on the orientation of the popper
+      measurement = (index === 1 ? !useHeight : useHeight) ? 'height' : 'width';
+      return op.map(str => toValue(str, measurement, data));
+    });
 
-      // if is a percentage relative to the popper (%p), we calculate the value of it using
-      // as base the sizes of the popper
-      // if is a percentage (% or %r), we calculate the value of it using as base the
-      // sizes of the reference element
-      if (unit.indexOf('%') === 0) {
-        let element;
-        switch (unit) {
-          case '%p':
-            element = data.offsets.popper;
-            break;
-          case '%':
-          case '$r':
-          default:
-            element = data.offsets.reference;
+    // Loop trough the offsets arrays and execute the operations
+    ops.forEach((op, index) => {
+      op.forEach((frag, index2) => {
+        if (isNumeric(frag)) {
+          offsets[index] += frag * (op[index2 - 1] === '-' ? -1 : 1);
         }
-
-        const rect = getClientRect(element);
-        const len = rect[measurement];
-        return len / 100 * value;
-      } else if (unit === 'vh' || unit === 'vw') {
-        // if is a vh or vw, we calculate the size based on the viewport
-        let size;
-        if (unit === 'vh') {
-          size = Math.max(
-            document.documentElement.clientHeight,
-            window.innerHeight || 0
-          );
-        } else {
-          size = Math.max(
-            document.documentElement.clientWidth,
-            window.innerWidth || 0
-          );
-        }
-        return size / 100 * value;
-      } else if (unit === 'px') {
-        // if is an explicit pixel unit, we get rid of the unit and keep the value
-        return +value;
-      } else {
-        // if is an implicit unit, it's px, and we return just the value
-        return +offset;
-      }
+      });
     });
   }
 
-  if (data.placement.indexOf('left') !== -1) {
+  if (basePlacement === 'left') {
     popper.top += offsets[0];
-    popper.left -= offsets[1] || 0;
-  } else if (data.placement.indexOf('right') !== -1) {
+    popper.left -= offsets[1];
+  } else if (basePlacement === 'right') {
     popper.top += offsets[0];
-    popper.left += offsets[1] || 0;
-  } else if (data.placement.indexOf('top') !== -1) {
+    popper.left += offsets[1];
+  } else if (basePlacement === 'top') {
     popper.left += offsets[0];
-    popper.top -= offsets[1] || 0;
-  } else if (data.placement.indexOf('bottom') !== -1) {
+    popper.top -= offsets[1];
+  } else if (basePlacement === 'bottom') {
     popper.left += offsets[0];
-    popper.top += offsets[1] || 0;
+    popper.top += offsets[1];
   }
   return data;
 }

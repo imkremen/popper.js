@@ -38,7 +38,7 @@ export default {
    * The `offset` modifier can shift your popper on both its axis.
    *
    * It accepts the following units:
-   * - unitless, interpreted as pixels
+   * - `px` or unitless, interpreted as pixels
    * - `%` or `%r`, percentage relative to the length of the reference element
    * - `%p`, percentage relative to the length of the popper element
    * - `vw`, CSS viewport width unit
@@ -49,13 +49,21 @@ export default {
    * `width`. In case of `left` or `right`, it will be the height.
    *
    * You can provide a single value (as `Number` or `String`), or a pair of values
-   * as `String` divided by one white space.
+   * as `String` divided by one (or more) white spaces.
+   * Additionally, it accepts additions and subtractions between different units.
+   * Note that multiplications and divisions aren't supported.
    *
    * Valid examples are:
-   * - offset: 10
-   * - offset: '10%'
-   * - offset: '10 10'
-   * - offset: '10% 10'
+   * ```
+   * 10
+   * '10%'
+   * '10 10'
+   * '10% 10'
+   * '10 + 10%'
+   * '10 - 5vh + 3%'
+   * '-10px + 5vh 5px - 6%'
+   * ```
+   *
    * @memberof modifiers
    * @inner
    */
